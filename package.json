@@ -1,0 +1,16 @@
+{
+  "name": "ozon-parser",
+  "version": "1.0.0",
+  "description": "Ozon Parser",
+  "main": "ozon_parser_server.js",
+  "scripts": {
+    "start": "node ozon_parser_server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "body-parser": "^1.20.2",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
+  }
+}

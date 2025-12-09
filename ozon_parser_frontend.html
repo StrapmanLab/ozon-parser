@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ozon Parser - Быстрый поиск и анализ товаров</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #4A90E2;
+            --primary-dark: #357ABD;
+            --success: #50C878;
+            --warning: #FFB84D;
+            --danger: #FF6B6B;
+            --text-dark: #2C3E50;
+            --text-light: #7F8C8D;
+            --bg-light: #F8F9FA;
+            --bg-white: #FFFFFF;
+            --border: #E8E8E8;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: var(--text-dark);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            background: var(--bg-white);
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            color: var(--text-light);
+            margin-bottom: 20px;
+        }
+
+        /* Search Box */
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .search-box input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: var(--bg-light);
+            color: var(--text-dark);
+            border: 2px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border);
+        }
+
+        .btn-sm {
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+
+        /* Status & Loading */
+        .status {
+            display: none;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .status.visible {
+            display: block;
+        }
+
+        .status.loading {
+            background: #E3F2FD;
+            color: #1976D2;
+        }
+
+        .status.success {
+            background: #E8F5E9;
+            color: #388E3C;
+        }
+
+        .status.error {
+            background: #FFEBEE;
+            color: #C62828;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top-color: #1976D2;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Results */
+        .results {
+            background: var(--bg-white);
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .results-header h2 {
+            font-size: 24px;
+        }
+
+        .export-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        /* Table */
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: var(--bg-light);
+            border-bottom: 2px solid var(--border);
+        }
+
+        th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-dark);
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+        }
+
+        tbody tr:hover {
+            background: var(--bg-light);
+        }
+
+        .shop-name {
+            font-weight: 500;
+            color: var(--primary);
+        }
+
+        .price {
+            font-weight: 600;
+            color: var(--success);
+        }
+
+        .price-old {
+            text-decoration: line-through;
+            color: var(--text-light);
+            font-size: 12px;
+        }
+
+        .rating {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .stars {
+            color: #FFB84D;
+        }
+
+        .link-btn {
+            color: var(--primary);
+            text-decoration: none;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: all 0.3s;
+            border: 1px solid transparent;
+        }
+
+        .link-btn:hover {
+            background: var(--bg-light);
+            border-color: var(--primary);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-light);
+        }
+
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+
+        /* Stats */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: var(--bg-light);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-light);
+            margin-top: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .search-box {
+                flex-direction: column;
+            }
+
+            .results-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .export-buttons {
+                width: 100%;
+            }
+
+            .export-buttons button {
+                flex: 1;
+            }
+
+            th, td {
+                padding: 10px;
+                font-size: 12px;
+            }
+
+            table {
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🔍 Ozon Parser Pro</h1>
+            <p>Быстрый поиск и анализ цен на товары Озона</p>
+            
+            <div class="search-box">
+                <input 
+                    type="text" 
+                    id="searchInput" 
+                    placeholder="Введите название товара, например: X96Q 2/16, роутер 4G, смарт-приставка..."
+                    autocomplete="off"
+                >
+                <button class="btn btn-primary" id="searchBtn" onclick="startSearch()">
+                    <span>🚀</span> Поиск
+                </button>
+            </div>
+
+            <div class="status" id="status"></div>
+        </div>
+
+        <!-- Results -->
+        <div class="results" id="results" style="display: none;">
+            <div class="results-header">
+                <h2 id="resultsTitle">Результаты поиска</h2>
+                <div class="export-buttons">
+                    <button class="btn btn-secondary btn-sm" onclick="exportToCSV()">📥 CSV</button>
+                    <button class="btn btn-secondary btn-sm" onclick="exportToJSON()">📥 JSON</button>
+                </div>
+            </div>
+
+            <div class="stats" id="stats"></div>
+
+            <div class="table-wrapper">
+                <table id="resultsTable">
+                    <thead>
+                        <tr>
+                            <th>Магазин</th>
+                            <th>Цена (с картой)</th>
+                            <th>Цена (без карты)</th>
+                            <th>Рейтинг</th>
+                            <th>Отзывы</th>
+                            <th>Ссылка</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Empty State -->
+        <div class="empty-state" id="emptyState" style="display: none;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+            </svg>
+            <h3>Начните поиск</h3>
+            <p>Введите название товара и нажмите кнопку поиска</p>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000/api/parse';
+        let currentResults = [];
+
+        // Enter для поиска
+        document.getElementById('searchInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') startSearch();
+        });
+
+        async function startSearch() {
+            const query = document.getElementById('searchInput').value.trim();
+
+            if (!query) {
+                showStatus('Введите поисковый запрос', 'error');
+                return;
+            }
+
+            showStatus(`⏳ Начинаю поиск "${query}"...`, 'loading');
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('searchBtn').disabled = true;
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok || !data.success) {
+                    throw new Error(data.error || 'Ошибка при парсинге');
+                }
+
+                currentResults = data.data;
+
+                if (currentResults.length === 0) {
+                    showStatus('По запросу ничего не найдено 😞', 'error');
+                    document.getElementById('emptyState').style.display = 'block';
+                } else {
+                    showStatus(`✅ Найдено ${data.count} товаров!`, 'success');
+                    displayResults(currentResults);
+                }
+            } catch (error) {
+                showStatus(`❌ Ошибка: ${error.message}`, 'error');
+                console.error(error);
+            } finally {
+                document.getElementById('searchBtn').disabled = false;
+            }
+        }
+
+        function showStatus(message, type) {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = `status visible ${type}`;
+            if (type === 'loading') {
+                statusEl.innerHTML = `<span class="spinner"></span>${message}`;
+            }
+        }
+
+        function displayResults(results) {
+            const tableBody = document.getElementById('tableBody');
+            tableBody.innerHTML = '';
+
+            results.forEach((item) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="shop-name">${escapeHtml(item.shop)}</td>
+                    <td class="price">${escapeHtml(item.priceWithCard)}</td>
+                    <td class="price-old">${escapeHtml(item.priceWithoutCard)}</td>
+                    <td class="rating">
+                        <span class="stars">★</span> ${escapeHtml(item.rating)}
+                    </td>
+                    <td>${item.reviews} отзывов</td>
+                    <td>
+                        <a class="link-btn" href="${item.url}" target="_blank" title="Открыть в Озоне">
+                            Перейти →
+                        </a>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+
+            updateStats(results);
+            document.getElementById('results').style.display = 'block';
+        }
+
+        function updateStats(results) {
+            const statsEl = document.getElementById('stats');
+            
+            const avgRating = (
+                results.reduce((sum, item) => {
+                    const rating = parseFloat(item.rating);
+                    return sum + (isNaN(rating) ? 0 : rating);
+                }, 0) / results.length
+            ).toFixed(1);
+
+            statsEl.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-value">${results.length}</div>
+                    <div class="stat-label">Товаров найдено</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${avgRating}</div>
+                    <div class="stat-label">Средний рейтинг</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${new Date().toLocaleDateString('ru-RU')}</div>
+                    <div class="stat-label">Дата сбора</div>
+                </div>
+            `;
+        }
+
+        function exportToCSV() {
+            if (currentResults.length === 0) {
+                alert('Нет данных для экспорта');
+                return;
+            }
+
+            const headers = ['Магазин', 'Цена с картой', 'Цена без карты', 'Рейтинг', 'Отзывы', 'Ссылка'];
+            const rows = currentResults.map((item) => [
+                item.shop,
+                item.priceWithCard,
+                item.priceWithoutCard,
+                item.rating,
+                item.reviews,
+                item.url
+            ]);
+
+            let csv = headers.join(',') + '\n';
+            rows.forEach((row) => {
+                csv += row.map((cell) => `"${cell}"`).join(',') + '\n';
+            });
+
+            downloadFile(csv, 'ozon-results.csv', 'text/csv');
+        }
+
+        function exportToJSON() {
+            if (currentResults.length === 0) {
+                alert('Нет данных для экспорта');
+                return;
+            }
+
+            const json = JSON.stringify(currentResults, null, 2);
+            downloadFile(json, 'ozon-results.json', 'application/json');
+        }
+
+        function downloadFile(content, filename, type) {
+            const blob = new Blob([content], { type });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Показываем empty state при загрузке
+        document.getElementById('emptyState').style.display = 'block';
+    </script>
+</body>
+</html>
